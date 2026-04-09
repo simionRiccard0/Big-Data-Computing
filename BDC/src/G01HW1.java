@@ -40,8 +40,7 @@ public class G01HW1 {
         else
             countB++;
 
-        // We use this nice strategly
-
+        // Budget check
         while (countA < kA || countB < kB) {
 
             int bestIndex = -1;
@@ -57,7 +56,7 @@ public class G01HW1 {
 
                 String group = p._2;
 
-                //respect fairness constraint
+                //respect fairness constraint, budget check
                 if (group.equals("A") && countA >= kA)
                     continue;
 
@@ -102,5 +101,8 @@ public class G01HW1 {
 
         return S;
     }
+
+    //NOTE: as professor said, the MR-Fair-FFT implementation should be equal or very similar to MRFFT, just calling the
+    //FairFFT method, no logical changes should be needed
 
 }
