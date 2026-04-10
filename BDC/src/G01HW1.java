@@ -8,16 +8,16 @@ import org.apache.spark.mllib.linalg.Vectors;
 
 public class G01HW1 {
 
-    public static ArrayList<Tuple2<Vector,String>> FairFFT(ArrayList<Tuple2<Vector,String>> P, int kA, int kB){
+    public static ArrayList<Tuple2<Vector,String>> FairFFT(ArrayList<Tuple2<Vector,String>> U, int kA, int kB){
 
         int k = kA + kB; //kA,kB given as input
 
         ArrayList<Tuple2<Vector,String>> S = new ArrayList<>(); //solution set S initialized
 
-        if (P.isEmpty())
+        if (U.isEmpty())
             return S;
 
-        int n = P.size();
+        int n = U.size();
 
         boolean[] chosen = new boolean[n]; //tracks already selected points
 
@@ -26,7 +26,7 @@ public class G01HW1 {
         //select first center randomly
         int firstIndex = rand.nextInt(n);
 
-        Tuple2<Vector,String> c1 = P.get(firstIndex);
+        Tuple2<Vector,String> c1 = U.get(firstIndex);
 
         S.add(c1);
 
@@ -52,7 +52,7 @@ public class G01HW1 {
                 if (chosen[i])
                     continue; //skip already selected points
 
-                Tuple2<Vector,String> p = P.get(i);
+                Tuple2<Vector,String> p = U.get(i);
 
                 String group = p._2;
 
@@ -86,7 +86,7 @@ public class G01HW1 {
             if (bestIndex == -1)
                 break;
 
-            Tuple2<Vector,String> ci = P.get(bestIndex);
+            Tuple2<Vector,String> ci = U.get(bestIndex);
 
             S.add(ci);
 
