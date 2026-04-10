@@ -1,10 +1,13 @@
 import java.util.ArrayList;
 import java.util.Random;
-
+import java.util.Iterator;
 import scala.Tuple2;
-
+import org.apache.spark.SparkConf;
+import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.mllib.linalg.Vector;
 import org.apache.spark.mllib.linalg.Vectors;
+import org.apache.spark.api.java.JavaRDD;
+import org.apache.spark.api.java.function.FlatMapFunction;
 
 public class G01HW1 {
 
@@ -104,5 +107,41 @@ public class G01HW1 {
 
     //NOTE: as professor said, the MR-Fair-FFT implementation should be equal or very similar to MRFFT, just calling the
     //FairFFT method, no logical changes should be needed
+
+    public static ArrayList<Tuple2<Vector,String>> MRFairFFT(JavaRDD<Tuple2<Vector,String>> U, int kA, int kB){
+            int k = kA+kB;
+
+            //ROUND 1
+
+                //MapPhase
+                // U.mapPartitions() allows to process each partition separately
+                JavaRDD<Tuple2<Vector,String>> coresets = U.mapPartitions((Iterator<Tuple2<Vector,String>> iter) -> {
+
+                                    // Convert partition to ArrayList, needed by FairFFT
+                                    ArrayList<Tuple2<Vector,String>> partition = new ArrayList<>();
+
+                                    //iterator used to read all the elements of the current partition
+                                    //everything is managed by Spark
+                                    while (iter.hasNext()) {
+                                        partition.add(iter.next());
+                                    }
+                //ReducePhase
+                                    // Run FairFFT locally
+                                    ArrayList<Tuple2<Vector,String>> localCenters = FairFFT(partition, kA, kB);
+
+                                    return localCenters.iterator();
+                                }
+                        );
+
+            //ROUND 2
+
+            // Collect coresets to driver
+            ArrayList<Tuple2<Vector,String>> collected = new ArrayList<>(coresets.collect());
+
+            // Run FairFFT again
+            ArrayList<Tuple2<Vector,String>> finalCenters = FairFFT(collected, kA, kB);
+
+            return finalCenters;
+    }
 
 }
