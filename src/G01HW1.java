@@ -2,6 +2,8 @@ import java.util.ArrayList;
 import java.util.Random;
 import java.util.Iterator;
 
+import org.apache.log4j.Level;
+import org.apache.log4j.Logger;
 import scala.Tuple2;
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaSparkContext;
@@ -157,9 +159,11 @@ public class G01HW1 {
         System.out.println("kB = " + kB);
         System.out.println("L = " + L);
 
+        Logger.getLogger("org").setLevel(Level.OFF);
+        Logger.getLogger("akka").setLevel(Level.OFF);
         SparkConf conf = new SparkConf(true).setAppName("G01HW1");
-
         JavaSparkContext sc = new JavaSparkContext(conf);
+        sc.setLogLevel("OFF");
 
         JavaRDD<String> lines = sc.textFile(inputPath);
 
