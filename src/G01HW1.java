@@ -10,13 +10,12 @@ import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.mllib.linalg.Vector;
 import org.apache.spark.mllib.linalg.Vectors;
 import org.apache.spark.api.java.JavaRDD;
-import org.apache.spark.api.java.function.FlatMapFunction;
 
-public class G01HW1 {
-
-    public static ArrayList<Tuple2<Vector,String>> FairFFT(ArrayList<Tuple2<Vector,String>> U, int kA, int kB){
-
-        int k = kA + kB; //kA,kB given as input
+public class G01HW1
+{
+    public static ArrayList<Tuple2<Vector,String>> FairFFT(ArrayList<Tuple2<Vector,String>> U, int kA, int kB)
+    {
+        // k-center clustering where k = kA + kB (kA, kB given as input)
 
         ArrayList<Tuple2<Vector,String>> S = new ArrayList<>(); //solution set S initialized
 
@@ -41,7 +40,7 @@ public class G01HW1 {
         int countA = 0;
         int countB = 0;
 
-        if (c1._2.equals("A")) //_2 gives access to the second term of the tuple
+        if (c1._2.equals("A")) //_2 gives access to the second member of the tuple
             countA++;
         else
             countB++;
@@ -81,11 +80,10 @@ public class G01HW1 {
                         minDist = dist;
                 }
 
-                if (minDist > maxDist) {
-
+                if (minDist > maxDist)
+                {
                     maxDist = minDist;
                     bestIndex = i;
-
                 }
             }
 
@@ -108,11 +106,12 @@ public class G01HW1 {
         return S;
     }
 
-    //NOTE: as professor said, the MR-Fair-FFT implementation should be equal or very similar to MRFFT, just calling the
-    //FairFFT method, no logical changes should be needed
+    /* NOTE: As mentioned in the assignment, the MR-Fair-FFT implementation should be equal or very similar to MRFFT,
+    just calling the FairFFT method - no logical changes should be needed. */
 
-    public static ArrayList<Tuple2<Vector,String>> MRFairFFT(JavaRDD<Tuple2<Vector,String>> U, int kA, int kB){
-            int k = kA+kB;
+    public static ArrayList<Tuple2<Vector,String>> MRFairFFT(JavaRDD<Tuple2<Vector,String>> U, int kA, int kB)
+    {
+            //  kA + kB = k, as above
 
             //ROUND 1
 
@@ -125,9 +124,8 @@ public class G01HW1 {
 
                                     //iterator used to read all the elements of the current partition
                                     //everything is managed by Spark
-                                    while (iter.hasNext()) {
+                                    while (iter.hasNext())
                                         partition.add(iter.next());
-                                    }
                 //ReducePhase
                                     // Run FairFFT locally
                                     ArrayList<Tuple2<Vector,String>> localCenters = FairFFT(partition, kA, kB);
@@ -147,8 +145,8 @@ public class G01HW1 {
             return finalCenters;
     }
 
-    public static void main(String [] args) {
-
+    public static void main(String [] args)
+    {
         String inputPath = args[0];
         int kA = Integer.parseInt(args[1]);
         int kB = Integer.parseInt(args[2]);
@@ -167,32 +165,11 @@ public class G01HW1 {
 
         JavaRDD<String> lines = sc.textFile(inputPath);
 
-        // Convert lines → points
-        JavaRDD<Tuple2<Vector,String>> inputPoints = lines.map(line -> {
-
-                    String[] tokens = line.split(",");
-
-                    int dim = tokens.length - 1;
-
-                    double[] coords = new double[dim];
-
-                    for (int i = 0; i < dim; i++) {
-
-                        coords[i] = Double.parseDouble(tokens[i]);
-                    }
-
-                    Vector v = Vectors.dense(coords);
-
-                    String group = tokens[dim];
-
-                    return new Tuple2<>(v, group);
-
-                }).repartition(L);
+        // Convert lines into points
+        JavaRDD<Tuple2<Vector,String>> inputPoints = lines.map(MapFunctions::mapPoints).repartition(L);
 
         long N = inputPoints.count();
-
         long NA = inputPoints.filter(p -> p._2.equals("A")).count();
-
         long NB = inputPoints.filter(p -> p._2.equals("B")).count();
 
         System.out.println("N = " + N);
@@ -218,8 +195,8 @@ public class G01HW1 {
 
                     double minDist = Double.MAX_VALUE;
 
-                    for (Tuple2<Vector,String> c : S) {
-
+                    for (Tuple2<Vector,String> c : S)
+                    {
                         double dist = Vectors.sqdist(p._1, c._1);
 
                         if (dist < minDist)
@@ -228,14 +205,32 @@ public class G01HW1 {
 
                     return minDist;
 
-                }).reduce((x,y) -> Math.max(x,y)
-                );
+                }).reduce((x,y) -> Math.max(x,y));
 
         System.out.println("Objective value = " + objective);
-
         System.out.println("Time MRFairFFT = " + (end - start) + " ms");
 
         sc.close();
+    }
+}
+
+class MapFunctions
+{
+    public static Tuple2<Vector,String> mapPoints(String line)
+    {
+        String[] tokens = line.split(",");
+
+        int dim = tokens.length - 1;
+        double[] coords = new double[dim];
+
+        for (int i = 0; i < dim; i++)
+            coords[i] = Double.parseDouble(tokens[i]);
+
+        Vector v = Vectors.dense(coords);
+
+        String group = tokens[dim];
+
+        return new Tuple2<>(v, group);
     }
 
 }
