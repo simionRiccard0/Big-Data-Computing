@@ -161,7 +161,7 @@ public class G01HW1 {
 
         Logger.getLogger("org").setLevel(Level.OFF);
         Logger.getLogger("akka").setLevel(Level.OFF);
-        SparkConf conf = new SparkConf(true).setAppName("G01HW1");
+        SparkConf conf = new SparkConf(true).setAppName("G01HW1").setMaster("local[*]");
         JavaSparkContext sc = new JavaSparkContext(conf);
         sc.setLogLevel("OFF");
 
