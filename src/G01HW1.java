@@ -1,6 +1,7 @@
 import java.util.ArrayList;
 import java.util.Random;
 import java.util.Iterator;
+
 import scala.Tuple2;
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaSparkContext;
@@ -142,6 +143,95 @@ public class G01HW1 {
             ArrayList<Tuple2<Vector,String>> finalCenters = FairFFT(collected, kA, kB);
 
             return finalCenters;
+    }
+
+    public static void main(String [] args) {
+
+        String inputPath = args[0];
+        int kA = Integer.parseInt(args[1]);
+        int kB = Integer.parseInt(args[2]);
+        int L  = Integer.parseInt(args[3]);
+
+        System.out.println("Input file = " + inputPath);
+        System.out.println("kA = " + kA);
+        System.out.println("kB = " + kB);
+        System.out.println("L = " + L);
+
+        SparkConf conf = new SparkConf(true).setAppName("G01HW1");
+
+        JavaSparkContext sc = new JavaSparkContext(conf);
+
+        JavaRDD<String> lines = sc.textFile(inputPath);
+
+        // Convert lines → points
+        JavaRDD<Tuple2<Vector,String>> inputPoints = lines.map(line -> {
+
+                    String[] tokens = line.split(",");
+
+                    int dim = tokens.length - 1;
+
+                    double[] coords = new double[dim];
+
+                    for (int i = 0; i < dim; i++) {
+
+                        coords[i] = Double.parseDouble(tokens[i]);
+                    }
+
+                    Vector v = Vectors.dense(coords);
+
+                    String group = tokens[dim];
+
+                    return new Tuple2<>(v, group);
+
+                }).repartition(L);
+
+        long N = inputPoints.count();
+
+        long NA = inputPoints.filter(p -> p._2.equals("A")).count();
+
+        long NB = inputPoints.filter(p -> p._2.equals("B")).count();
+
+        System.out.println("N = " + N);
+        System.out.println("NA = " + NA);
+        System.out.println("NB = " + NB);
+
+        long start = System.currentTimeMillis();
+
+        ArrayList<Tuple2<Vector,String>> S = MRFairFFT(inputPoints, kA, kB);
+
+        long end = System.currentTimeMillis();
+
+        System.out.println("Centers:");
+
+        for (Tuple2<Vector,String> c : S) {
+
+            System.out.println(
+                    c._1 + " " + c._2
+            );
+        }
+
+        double objective = inputPoints.map(p -> {
+
+                    double minDist = Double.MAX_VALUE;
+
+                    for (Tuple2<Vector,String> c : S) {
+
+                        double dist = Vectors.sqdist(p._1, c._1);
+
+                        if (dist < minDist)
+                            minDist = dist;
+                    }
+
+                    return minDist;
+
+                }).reduce((x,y) -> Math.max(x,y)
+                );
+
+        System.out.println("Objective value = " + objective);
+
+        System.out.println("Time MRFairFFT = " + (end - start) + " ms");
+
+        sc.close();
     }
 
 }
