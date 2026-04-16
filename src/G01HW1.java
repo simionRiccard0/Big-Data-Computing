@@ -16,7 +16,6 @@ public class G01HW1
     public static ArrayList<Tuple2<Vector,String>> FairFFT(ArrayList<Tuple2<Vector,String>> U, int kA, int kB)
     {
         // k-center clustering where k = kA + kB (kA, kB given as input)
-
         ArrayList<Tuple2<Vector,String>> S = new ArrayList<>(); //solution set S initialized
 
         if (U.isEmpty())
@@ -26,7 +25,7 @@ public class G01HW1
 
         boolean[] chosen = new boolean[n]; //tracks already selected points
 
-        Random rand = new Random();
+        Random rand = new Random(1234);
 
         //select first center randomly
         int firstIndex = rand.nextInt(n);
@@ -68,13 +67,14 @@ public class G01HW1
                 if (group.equals("B") && countB >= kB)
                     continue;
 
-                double minDist =
-                        Double.MAX_VALUE;
+                double minDist = Double.MAX_VALUE;
 
                 //distance from closest center
                 for (Tuple2<Vector,String> c : S) {
 
-                    double dist = Vectors.sqdist(p._1, c._1);
+                    double dist = Math.sqrt(
+                            Vectors.sqdist(p._1, c._1)
+                    );
 
                     if (dist < minDist)
                         minDist = dist;
@@ -111,38 +111,38 @@ public class G01HW1
 
     public static ArrayList<Tuple2<Vector,String>> MRFairFFT(JavaRDD<Tuple2<Vector,String>> U, int kA, int kB)
     {
-            //  kA + kB = k, as above
+        //  kA + kB = k, as above
 
-            //ROUND 1
+        //ROUND 1
 
-                //MapPhase
-                // U.mapPartitions() allows to process each partition separately
-                JavaRDD<Tuple2<Vector,String>> coresets = U.mapPartitions((Iterator<Tuple2<Vector,String>> iter) -> {
+        //MapPhase
+        // U.mapPartitions() allows to process each partition separately
+        JavaRDD<Tuple2<Vector,String>> coresets = U.mapPartitions((Iterator<Tuple2<Vector,String>> iter) -> {
 
-                                    // Convert partition to ArrayList, needed by FairFFT
-                                    ArrayList<Tuple2<Vector,String>> partition = new ArrayList<>();
+                    // Convert partition to ArrayList, needed by FairFFT
+                    ArrayList<Tuple2<Vector,String>> partition = new ArrayList<>();
 
-                                    //iterator used to read all the elements of the current partition
-                                    //everything is managed by Spark
-                                    while (iter.hasNext())
-                                        partition.add(iter.next());
-                //ReducePhase
-                                    // Run FairFFT locally
-                                    ArrayList<Tuple2<Vector,String>> localCenters = FairFFT(partition, kA, kB);
+                    //iterator used to read all the elements of the current partition
+                    //everything is managed by Spark
+                    while (iter.hasNext())
+                        partition.add(iter.next());
+                    //ReducePhase
+                    // Run FairFFT locally
+                    ArrayList<Tuple2<Vector,String>> localCenters = FairFFT(partition, kA, kB);
 
-                                    return localCenters.iterator();
-                                }
-                        );
+                    return localCenters.iterator();
+                }
+        );
 
-            //ROUND 2
+        //ROUND 2
 
-            // Collect coresets to driver
-            ArrayList<Tuple2<Vector,String>> collected = new ArrayList<>(coresets.collect());
+        // Collect coresets to driver
+        ArrayList<Tuple2<Vector,String>> collected = new ArrayList<>(coresets.collect());
 
-            // Run FairFFT again
-            ArrayList<Tuple2<Vector,String>> finalCenters = FairFFT(collected, kA, kB);
+        // Run FairFFT again
+        ArrayList<Tuple2<Vector,String>> finalCenters = FairFFT(collected, kA, kB);
 
-            return finalCenters;
+        return finalCenters;
     }
 
     public static void main(String [] args)
@@ -152,10 +152,16 @@ public class G01HW1
         int kB = Integer.parseInt(args[2]);
         int L  = Integer.parseInt(args[3]);
 
-        System.out.println("Input file = " + inputPath);
-        System.out.println("kA = " + kA);
-        System.out.println("kB = " + kB);
-        System.out.println("L = " + L);
+        //must work also for kA, kB = 0
+        //it may happen that the effective centers for a group are less than kA.
+        //in that case the other group must take those centers.
+
+        System.out.println(
+                "File path = " + inputPath +
+                        ", KA = " + kA +
+                        ", KB = " + kB +
+                        ", L = " + L
+        );
 
         Logger.getLogger("org").setLevel(Level.OFF);
         Logger.getLogger("akka").setLevel(Level.OFF);
@@ -166,15 +172,20 @@ public class G01HW1
         JavaRDD<String> lines = sc.textFile(inputPath);
 
         // Convert lines into points
-        JavaRDD<Tuple2<Vector,String>> inputPoints = lines.map(MapFunctions::mapPoints).repartition(L);
+        JavaRDD<Tuple2<Vector,String>> inputPoints =
+                lines.map(MapFunctions::mapPoints)
+                        .repartition(L)
+                        .cache();
 
         long N = inputPoints.count();
         long NA = inputPoints.filter(p -> p._2.equals("A")).count();
         long NB = inputPoints.filter(p -> p._2.equals("B")).count();
 
-        System.out.println("N = " + N);
-        System.out.println("NA = " + NA);
-        System.out.println("NB = " + NB);
+        System.out.println(
+                        "N = " + N +
+                        ", NA = " + NA +
+                        ", NB = " + NB
+        );
 
         long start = System.currentTimeMillis();
 
@@ -182,33 +193,31 @@ public class G01HW1
 
         long end = System.currentTimeMillis();
 
-        System.out.println("Centers:");
-
         for (Tuple2<Vector,String> c : S) {
 
             System.out.println(
-                    c._1 + " " + c._2
+                    "Center = " + c._1 + " Label = " + c._2
             );
         }
 
         double objective = inputPoints.map(p -> {
 
-                    double minDist = Double.MAX_VALUE;
+            double minDist = Double.MAX_VALUE;
 
-                    for (Tuple2<Vector,String> c : S)
-                    {
-                        double dist = Vectors.sqdist(p._1, c._1);
+            for (Tuple2<Vector,String> c : S)
+            {
+                double dist = Math.sqrt(Vectors.sqdist(p._1, c._1));
 
-                        if (dist < minDist)
-                            minDist = dist;
-                    }
+                if (dist < minDist)
+                    minDist = dist;
+            }
 
-                    return minDist;
+            return minDist;
 
-                }).reduce((x,y) -> Math.max(x,y));
+        }).reduce((x,y) -> Math.max(x,y));
 
-        System.out.println("Objective value = " + objective);
-        System.out.println("Time MRFairFFT = " + (end - start) + " ms");
+        System.out.println("Objective function = " + objective);
+        System.out.println("Running time of MRFairFFT = " + (end - start) + " ms");
 
         sc.close();
     }
