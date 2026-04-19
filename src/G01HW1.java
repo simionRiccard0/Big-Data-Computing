@@ -39,7 +39,8 @@ public class G01HW1
         int countA = 0;
         int countB = 0;
 
-        if (c1._2.equals("A")) //_2 gives access to the second member of the tuple
+        // It must work also for kA, kB = 0
+        if (c1._2.equals("A")) // _2 gives access to the second member of the tuple
             countA++;
         else
             countB++;
@@ -54,13 +55,15 @@ public class G01HW1
             for (int i = 0; i < n; i++) {
 
                 if (chosen[i])
-                    continue; //skip already selected points
+                    continue; // Skip already selected points
 
                 Tuple2<Vector,String> p = U.get(i);
 
                 String group = p._2;
 
-                //respect fairness constraint, budget check
+                // Comply with fairness constraint + budget check
+                /* It may happen that the effective centers for a group are less than kA -
+                in that case the other group must take those centers. */
                 if (group.equals("A") && countA >= kA)
                     continue;
 
@@ -69,12 +72,10 @@ public class G01HW1
 
                 double minDist = Double.MAX_VALUE;
 
-                //distance from closest center
+                // Distance from the closest center
                 for (Tuple2<Vector,String> c : S) {
 
-                    double dist = Math.sqrt(
-                            Vectors.sqdist(p._1, c._1)
-                    );
+                    double dist = Math.sqrt(Vectors.sqdist(p._1, c._1));
 
                     if (dist < minDist)
                         minDist = dist;
@@ -106,27 +107,27 @@ public class G01HW1
         return S;
     }
 
-    /* NOTE: As mentioned in the assignment, the MR-Fair-FFT implementation should be equal or very similar to MRFFT,
+    /* NOTE: As mentioned in the assignment, the MR-Fair-FFT implementation should be equal or very similar to MR-FFT,
     just calling the FairFFT method - no logical changes should be needed. */
 
     public static ArrayList<Tuple2<Vector,String>> MRFairFFT(JavaRDD<Tuple2<Vector,String>> U, int kA, int kB)
     {
-        //  kA + kB = k, as above
+        // kA + kB = k, as above
 
-        //ROUND 1
+        // ROUND 1
 
-        //MapPhase
+        // MapPhase
         // U.mapPartitions() allows to process each partition separately
         JavaRDD<Tuple2<Vector,String>> coresets = U.mapPartitions((Iterator<Tuple2<Vector,String>> iter) -> {
 
                     // Convert partition to ArrayList, needed by FairFFT
                     ArrayList<Tuple2<Vector,String>> partition = new ArrayList<>();
 
-                    //iterator used to read all the elements of the current partition
-                    //everything is managed by Spark
+                    // Iterator used to read all the elements of the current partition
+                    // Everything is managed by Spark
                     while (iter.hasNext())
                         partition.add(iter.next());
-                    //ReducePhase
+                    // ReducePhase
                     // Run FairFFT locally
                     ArrayList<Tuple2<Vector,String>> localCenters = FairFFT(partition, kA, kB);
 
@@ -134,7 +135,7 @@ public class G01HW1
                 }
         );
 
-        //ROUND 2
+        // ROUND 2
 
         // Collect coresets to driver
         ArrayList<Tuple2<Vector,String>> collected = new ArrayList<>(coresets.collect());
@@ -145,16 +146,18 @@ public class G01HW1
         return finalCenters;
     }
 
-    public static void main(String [] args)
+    public static void main(String[] args)
     {
         String inputPath = args[0];
         int kA = Integer.parseInt(args[1]);
         int kB = Integer.parseInt(args[2]);
         int L  = Integer.parseInt(args[3]);
 
-        //must work also for kA, kB = 0
-        //it may happen that the effective centers for a group are less than kA.
-        //in that case the other group must take those centers.
+        Logger.getLogger("org").setLevel(Level.OFF);
+        Logger.getLogger("akka").setLevel(Level.OFF);
+        SparkConf conf = new SparkConf(true).setAppName("G01HW1").setMaster("local[*]");
+        JavaSparkContext sc = new JavaSparkContext(conf);
+        sc.setLogLevel("OFF");
 
         System.out.println(
                 "File path = " + inputPath +
@@ -162,12 +165,6 @@ public class G01HW1
                         ", KB = " + kB +
                         ", L = " + L
         );
-
-        Logger.getLogger("org").setLevel(Level.OFF);
-        Logger.getLogger("akka").setLevel(Level.OFF);
-        SparkConf conf = new SparkConf(true).setAppName("G01HW1").setMaster("local[*]");
-        JavaSparkContext sc = new JavaSparkContext(conf);
-        sc.setLogLevel("OFF");
 
         JavaRDD<String> lines = sc.textFile(inputPath);
 
@@ -189,16 +186,13 @@ public class G01HW1
 
         long start = System.currentTimeMillis();
 
+
         ArrayList<Tuple2<Vector,String>> S = MRFairFFT(inputPoints, kA, kB);
 
         long end = System.currentTimeMillis();
 
-        for (Tuple2<Vector,String> c : S) {
-
-            System.out.println(
-                    "Center = " + c._1 + " Label = " + c._2
-            );
-        }
+        for (Tuple2<Vector,String> c : S)
+            System.out.println("Center = " + c._1 + " Label = " + c._2);
 
         double objective = inputPoints.map(p -> {
 
@@ -241,5 +235,4 @@ class MapFunctions
 
         return new Tuple2<>(v, group);
     }
-
 }
