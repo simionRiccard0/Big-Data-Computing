@@ -16,18 +16,18 @@ public class G01HW1
     public static ArrayList<Tuple2<Vector,String>> FairFFT(ArrayList<Tuple2<Vector,String>> U, int kA, int kB)
     {
         // k-center clustering where k = kA + kB (kA, kB given as input)
-        ArrayList<Tuple2<Vector,String>> S = new ArrayList<>(); //solution set S initialized
+        ArrayList<Tuple2<Vector,String>> S = new ArrayList<>(); // Solution set S initialized
 
         if (U.isEmpty())
             return S;
 
         int n = U.size();
 
-        boolean[] chosen = new boolean[n]; //tracks already selected points
+        boolean[] chosen = new boolean[n]; // Tracks already selected points
 
         Random rand = new Random(1234);
 
-        //select first center randomly
+        // Select first center randomly
         int firstIndex = rand.nextInt(n);
 
         Tuple2<Vector,String> c1 = U.get(firstIndex);
@@ -46,14 +46,13 @@ public class G01HW1
             countB++;
 
         // Budget check
-        while (countA < kA || countB < kB) {
-
+        while (countA < kA || countB < kB)
+        {
             int bestIndex = -1;
-
             double maxDist = -1.0;
 
-            for (int i = 0; i < n; i++) {
-
+            for (int i = 0; i < n; i++)
+            {
                 if (chosen[i])
                     continue; // Skip already selected points
 
@@ -61,8 +60,8 @@ public class G01HW1
 
                 String group = p._2;
 
-                // Comply with fairness constraint + budget check
-                /* It may happen that the effective centers for a group are less than kA -
+                /* Comply with fairness constraint + budget check
+                It may happen that the actual centers for a group are fewer than kA -
                 in that case the other group must take those centers. */
                 if (group.equals("A") && countA >= kA)
                     continue;
@@ -73,8 +72,8 @@ public class G01HW1
                 double minDist = Double.MAX_VALUE;
 
                 // Distance from the closest center
-                for (Tuple2<Vector,String> c : S) {
-
+                for (Tuple2<Vector,String> c : S)
+                {
                     double dist = Math.sqrt(Vectors.sqdist(p._1, c._1));
 
                     if (dist < minDist)
@@ -101,7 +100,6 @@ public class G01HW1
                 countA++;
             else
                 countB++;
-
         }
 
         return S;
@@ -120,7 +118,7 @@ public class G01HW1
         // U.mapPartitions() allows to process each partition separately
         JavaRDD<Tuple2<Vector,String>> coresets = U.mapPartitions((Iterator<Tuple2<Vector,String>> iter) -> {
 
-                    // Convert partition to ArrayList, needed by FairFFT
+                    // Convert partition to ArrayList, as required by FairFFT
                     ArrayList<Tuple2<Vector,String>> partition = new ArrayList<>();
 
                     // Iterator used to read all the elements of the current partition
@@ -140,7 +138,7 @@ public class G01HW1
         // Collect coresets to driver
         ArrayList<Tuple2<Vector,String>> collected = new ArrayList<>(coresets.collect());
 
-        // Run FairFFT again
+        // Run FairFFT again on the merger coreset
         ArrayList<Tuple2<Vector,String>> finalCenters = FairFFT(collected, kA, kB);
 
         return finalCenters;
@@ -178,11 +176,7 @@ public class G01HW1
         long NA = inputPoints.filter(p -> p._2.equals("A")).count();
         long NB = inputPoints.filter(p -> p._2.equals("B")).count();
 
-        System.out.println(
-                        "N = " + N +
-                        ", NA = " + NA +
-                        ", NB = " + NB
-        );
+        System.out.println("N = " + N + ", NA = " + NA + ", NB = " + NB);
 
         long start = System.currentTimeMillis();
 
