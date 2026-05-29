@@ -1,4 +1,4 @@
-// Draft
+ // Draft
 
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.StorageLevels;
@@ -11,6 +11,60 @@ import java.util.concurrent.Semaphore;
 
 public class G01HW2
 {
+    // Hash-function parameters for Count-Min Sketch
+     static final long P = 8191L; // prime p used in the 2-universal family
+
+
+    // Generate one hash function h(x) = ((a*x + b) mod p) mod C
+    // where "a" in [1, p-1] and "b" in [0, p-1].
+    // Returns a 2-element long[] { a, b }.
+
+    static long[] generateHashParams(Random rnd) {
+        long a = 1 + (long) (rnd.nextDouble() * (P - 1)); // a in [1, P-1]
+        long b = (long) (rnd.nextDouble() * P);            // b in [0, P-1]
+        return new long[]{a, b};
+    }
+
+    // Evaluate h_j(x) = ((a*x + b) mod p) mod C
+    static int hashValue(long x, long a, long b, int C) {
+        long val = ((a * x + b) % P + P) % P; // ensure non-negative
+        return (int) (val % C);
+    }
+
+    // Count-Min Sketch
+
+    static void cmUpdate(long item, long[][] C, long[][] hashParams, int d, int w) {
+        for (int j = 0; j < d; j++) {
+            int k = hashValue(item, hashParams[j][0], hashParams[j][1], w);
+            C[j][k]++;
+        }
+    }
+
+    // Estimate frequency of item using Count-Min Sketch
+
+    static long cmEstimate(long item, long[][] C, long[][] hashParams, int d, int w) {
+        long minVal = Long.MAX_VALUE;
+        for (int j = 0; j < d; j++) {
+            int k = hashValue(item, hashParams[j][0], hashParams[j][1], w);
+            minVal = Math.min(minVal, C[j][k]);
+        }
+        return minVal;
+    }
+
+    // Sticky Sampling
+
+    static void stickyUpdate(long item, HashMap<Long, Long> S,
+                             long r, long n, Random rnd) {
+        if (S.containsKey(item)) {
+            S.put(item, S.get(item) + 1L);
+        } else {
+            // add with probability r/n
+            double prob = (double) r / (double) n;
+            if (rnd.nextDouble() <= prob) {
+                S.put(item, 1L);
+            }
+        }
+    }
 
     public static void main(String[] args) throws Exception
     {
