@@ -182,16 +182,6 @@ public class G01HW2 {
         System.out.println("Waiting for shutdown condition");
         stoppingSemaphore.acquire();
 
-        // Print input parameters
-        System.out.println("INPUT PARAMETERS");
-        System.out.println("n = " + n);
-        System.out.println("phi = " + phi);
-        System.out.println("epsilon = " + epsilon);
-        System.out.println("delta = " + delta);
-        System.out.println("d = " + d);
-        System.out.println("w = " + w);
-        System.out.println("port = " + portExp);
-
         System.out.println("Stopping the streaming engine");
         /* The following command stops the execution of the stream. The first boolean, if true, also
            stops the SparkContext, while the second boolean, if true, stops gracefully by waiting for
@@ -201,6 +191,16 @@ public class G01HW2 {
         */
         sc.stop(false, false);
         System.out.println("Streaming engine stopped");
+
+        // Print input parameters
+        System.out.println("INPUT PARAMETERS");
+        System.out.println("n = " + n);
+        System.out.println("phi = " + phi);
+        System.out.println("epsilon = " + epsilon);
+        System.out.println("delta = " + delta);
+        System.out.println("d = " + d);
+        System.out.println("w = " + w);
+        System.out.println("port = " + portExp);
 
         // &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
         // COMPUTE AND PRINT RESULTS
