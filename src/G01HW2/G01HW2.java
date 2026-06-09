@@ -15,7 +15,7 @@ public class G01HW2 {
 
     // Generate one hash function: returns { a, b }
     static long[] generateHashParams(Random rnd) {
-        long a = 1 + (long)(rnd.nextDouble() * (P - 1)); // a in [1, P-1]
+        long a = 1 + (long)(rnd.nextDouble() * (P - 1));  // a in [1, P-1]
         long b = (long)(rnd.nextDouble() * P);            // b in [0, P-1]
         return new long[]{a, b};
     }
@@ -154,9 +154,8 @@ public class G01HW2 {
                                 }
 
                                 // Update Count-Min Sketch (once per actual occurrence)
-                                for (long i = 0; i < count; i++) {
+                                for (long i = 0; i < count; i++)
                                     cmUpdate(item, sketch, hashParams, d, w);
-                                }
 
                                 // Check if item should be added to FCM
                                 if (!fcmSet.contains(item)) {
