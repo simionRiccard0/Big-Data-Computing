@@ -46,12 +46,12 @@ public class G01HW2 {
 
     public static void main(String[] args) throws Exception {
 
-        if (args.length != 7)
-            throw new IllegalArgumentException("USAGE: n phi epsilon delta d w portExp");
-
         // &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
         // INPUT READING
         // &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+
+        if (args.length != 7)
+            throw new IllegalArgumentException("USAGE: n phi epsilon delta d w portExp");
 
         int    n       = Integer.parseInt(args[0]);
         double phi     = Double.parseDouble(args[1]);
@@ -63,17 +63,6 @@ public class G01HW2 {
 
         // Sticky Sampling rate: r = ceil(ln(1/(delta*phi)) / epsilon)
         long r = (long) Math.ceil(Math.log(1.0 / (delta * phi)) / epsilon);
-
-        // Spark setup
-        SparkConf conf = new SparkConf(true)
-                .setMaster("local[*]")
-                .setAppName("G01HW2");
-
-        JavaStreamingContext sc = new JavaStreamingContext(conf, Durations.milliseconds(100));
-        sc.sparkContext().setLogLevel("ERROR");
-
-        Semaphore stoppingSemaphore = new Semaphore(1);
-        stoppingSemaphore.acquire();
 
         // &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
         // DATA STRUCTURES
@@ -109,6 +98,17 @@ public class G01HW2 {
         // &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
         // STREAM PROCESSING
         // &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+
+        // Spark setup
+        SparkConf conf = new SparkConf(true)
+                .setMaster("local[*]")
+                .setAppName("G01HW2");
+
+        JavaStreamingContext sc = new JavaStreamingContext(conf, Durations.milliseconds(100));
+        sc.sparkContext().setLogLevel("ERROR");
+
+        Semaphore stoppingSemaphore = new Semaphore(1);
+        stoppingSemaphore.acquire();
 
         // BEWARE: the foreachRDD method has "at least once semantics", meaning
         // that the same data might be processed multiple times in case of failure.
