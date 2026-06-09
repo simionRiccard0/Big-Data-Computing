@@ -13,7 +13,7 @@ public class G01HW2 {
     // Hash-function parameters for Count-Min Sketch
     static final long P = 8191L; // prime p used in the 2-universal family
 
-    // Generate one hash function: returns { a, b }
+    // Generate a hash function h(x) = ((a*x + b) mod p) mod C; returns { a, b }
     static long[] generateHashParams(Random rnd) {
         long a = 1 + (long)(rnd.nextDouble() * (P - 1));  // a in [1, P-1]
         long b = (long)(rnd.nextDouble() * P);            // b in [0, P-1]
@@ -89,11 +89,15 @@ public class G01HW2 {
         // DATA STRUCTURES
         // &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
 
+        /* Variable streamLength below is used to maintain the number of processed stream items.
+        It must be defined as a 1-element array so that the value stored into the array can be
+        changed within the lambda used in foreachRDD. Using a simple external counter streamLength of type
+        long would not work since the lambda would not be allowed to update it. */
         long[] streamLength = new long[1];
         streamLength[0] = 0L;
 
         // True frequency histogram
-        HashMap<Long, Long> histogram = new HashMap<>();
+        HashMap<Long, Long> histogram = new HashMap<>(); // Hash Table for the distinct elements
 
         // Sticky Sampling dictionary: item -> count
         HashMap<Long, Long> stickyDict = new HashMap<>();
@@ -116,19 +120,25 @@ public class G01HW2 {
         // STREAM PROCESSING
         // &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
 
+        // BEWARE: the foreachRDD method has "at least once semantics", meaning
+        // that the same data might be processed multiple times in case of failure.
         sc.socketTextStream("algo.dei.unipd.it", portExp, StorageLevels.MEMORY_AND_DISK)
                 .foreachRDD((batch, time) -> {
+                     // this is working on the batch at time *time*
                     if (streamLength[0] < n) {
                         long batchSize = batch.count();
                         streamLength[0] += batchSize;
                         if (batchSize > 0) {
-                            // Collect items with their frequencies in this batch
+                            // Collect distinct items with their frequencies in this batch
                             // (use i1+i2 to count, NOT the deduplication bug i1->1L)
                             Map<Long, Long> batchItems = batch
                                     .mapToPair(s -> new Tuple2<>(Long.parseLong(s), 1L))
                                     .reduceByKey((i1, i2) -> i1 + i2)
                                     .collectAsMap();
 
+                            // Update the streaming state. If the overall count of processed items reaches the
+                            // THRESHOLD value (among all batches processed so far), subsequent items of the
+                            // current batch are ignored, and no further batches will be processed
                             for (Map.Entry<Long, Long> entry : batchItems.entrySet()) {
                                 long item  = entry.getKey();
                                 long count = entry.getValue();
@@ -182,6 +192,12 @@ public class G01HW2 {
         System.out.println("Waiting for shutdown condition");
         stoppingSemaphore.acquire();
         System.out.println("Stopping the streaming engine");
+        /* The following command stops the execution of the stream. The first boolean, if true, also
+           stops the SparkContext, while the second boolean, if true, stops gracefully by waiting for
+           the processing of all received data to be completed. Error messages might be shown when
+           the program ends, but they will not affect the correctness. It is also possible to set
+           the second parameter to true.
+        */
         sc.stop(false, false);
         System.out.println("Streaming engine stopped");
 
