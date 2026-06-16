@@ -67,6 +67,15 @@ public class G01HW2
         int    w       = Integer.parseInt(args[5]);
         int    portExp = Integer.parseInt(args[6]);
 
+        if (phi <= 0 || phi >= 1)
+            throw new IllegalArgumentException("USAGE: It must be 0 < phi < 1");
+        
+        if (epsilon <= 0 || epsilon >= phi)
+            throw new IllegalArgumentException("USAGE: It must be 0 < epsilon < phi");
+
+        if (delta <= 0 || delta >= 1)
+            throw new IllegalArgumentException("USAGE: It must be 0 < delta < 1");
+
         // Sticky Sampling rate: r = ceil(ln(1/(delta*phi)) / epsilon)
         long r = (long) Math.ceil(Math.log(1.0 / (delta * phi)) / epsilon);
 
