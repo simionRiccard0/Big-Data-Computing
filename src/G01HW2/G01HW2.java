@@ -241,7 +241,7 @@ public class G01HW2
         for (long item : trueFrequent)
             System.out.println("Item = " + item + " True Freq = " + histogram.get(item));
 
-        System.out.println("\n");
+        System.out.print("\n");
         // --- STICKY SAMPLING ---
         // FSS: items in stickyDict with count >= (phi - epsilon) * n
         double sssThreshold = (phi - epsilon) * n;
@@ -260,7 +260,7 @@ public class G01HW2
             long trueFreq = histogram.getOrDefault(item, 0L);
             System.out.println("Item = " + item + " True Freq = " + trueFreq);
         }
-        System.out.println("\n");
+        System.out.print("\n");
         // --- COUNT-MIN SKETCH ---
         List<Long> fcmList = new ArrayList<>(fcmSet);
         Collections.sort(fcmList);
@@ -272,6 +272,5 @@ public class G01HW2
             long trueFreq = histogram.getOrDefault(item, 0L);
             System.out.println("Item = " + item + " True Freq = " + trueFreq);
         }
-        System.out.println("\n");
     }
 }
